@@ -1,0 +1,23 @@
+services:
+  dns-server:
+    container_name: dns-server
+    hostname: dns-server
+    image: docker.io/technitium/dns-server:latest
+
+    ports:
+      - "172.16.110.10:5380:5380/tcp"
+      - "172.16.110.10:53:53/udp"
+      - "172.16.110.10:53:53/tcp"
+
+    environment:
+      - DNS_SERVER_DOMAIN=lds.lan
+      - DNS_SERVER_ADMIN_PASSWORD=CHANGE_ME
+
+    volumes:
+      - ./data:/etc/dns
+      - ./logs:/var/log/technitium/dns
+
+    restart: unless-stopped
+
+    sysctls:
+      - net.ipv4.ip_local_port_range=1024 65535

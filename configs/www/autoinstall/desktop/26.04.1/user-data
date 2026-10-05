@@ -1,0 +1,115 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  refresh-installer:
+    update: false
+
+  source:
+    id: ubuntu-desktop
+    search_drivers: true
+
+  proxy: http://172.16.110.10:3142
+
+  apt:
+    geoip: false
+
+  packages:
+    - sssd-ldap
+    - sssd-tools
+    - ldap-utils
+    - nfs-common
+    - ca-certificates
+    - wget
+    - gpg
+
+  identity:
+    realname: Superuser
+    hostname: ubuntu-desktop
+    username: superuser
+    password: "CHANGE_ME_HASH"
+
+  locale: en_US.UTF-8
+
+  keyboard:
+    layout: us
+
+  storage:
+    layout:
+      name: direct
+
+  late-commands:
+    - mkdir -p /target/etc/sssd
+    - wget -Y off -qO /target/etc/sssd/sssd.conf http://172.16.110.10/autoinstall/sssd.conf
+    - chmod 0600 /target/etc/sssd/sssd.conf
+    - chown root:root /target/etc/sssd/sssd.conf
+
+    - wget -Y off -qO /target/etc/idmapd.conf http://172.16.110.10/autoinstall/idmapd.conf
+    - chmod 0644 /target/etc/idmapd.conf
+    - chown root:root /target/etc/idmapd.conf
+
+    - mkdir -p /target/usr/local/share/ca-certificates
+    - wget -Y off -qO /target/usr/local/share/ca-certificates/EXAMPLECA.crt http://172.16.110.10/autoinstall/ldap-ca.crt
+    - chmod 0644 /target/usr/local/share/ca-certificates/EXAMPLECA.crt
+    - chown root:root /target/usr/local/share/ca-certificates/EXAMPLECA.crt
+
+    - mkdir -p /target/gpfs/imag /target/gpfs/scic /target/gpfs/services
+    - wget -Y off -qO /tmp/fstab.nfs http://172.16.110.10/autoinstall/fstab
+    - cat /tmp/fstab.nfs >> /target/etc/fstab
+
+    - curtin in-target -- update-ca-certificates
+    - curtin in-target -- pam-auth-update --enable mkhomedir
+
+    - wget -Y off -O /target/tmp/DEB-GPG-KEY https://repo.fortinet.com/repo/forticlient/8.0/ubuntu/DEB-GPG-KEY
+    - curtin in-target -- gpg --dearmor -o /usr/share/keyrings/repo.fortinet.com.gpg /tmp/DEB-GPG-KEY
+    - printf '%s\n' 'deb [arch=amd64 signed-by=/usr/share/keyrings/repo.fortinet.com.gpg] https://repo.fortinet.com/repo/forticlient/8.0/ubuntu/ stable non-free' > /target/etc/apt/sources.list.d/repo.fortinet.com.list
+    - curtin in-target -- apt-get update
+    - curtin in-target -- apt-get install -y forticlient
+    - rm -f /target/tmp/DEB-GPG-KEY
+
+    - |
+      set -eu
+      wget -Y off -qO /tmp/rustdesk-release.json https://api.github.com/repos/rustdesk/rustdesk/releases/latest
+
+      python3 - <<'PYTHON'
+      import json
+
+      with open("/tmp/rustdesk-release.json") as f:
+          release = json.load(f)
+
+      url = next(
+          asset["browser_download_url"]
+          for asset in release["assets"]
+          if asset["name"].endswith("-x86_64.deb")
+          and not asset["name"].startswith("rustdesk-unattended-wayland-")
+      )
+
+      with open("/tmp/rustdesk-url", "w") as f:
+          f.write(url)
+      PYTHON
+
+      wget -Y off -O /target/tmp/rustdesk.deb "$(cat /tmp/rustdesk-url)"
+      curtin in-target -- apt-get install -y /tmp/rustdesk.deb
+
+      wget -Y off -qO /target/tmp/RustDesk2.toml http://172.16.110.10/autoinstall/RustDesk2.toml
+
+      curtin in-target -- mkdir -p /root/.config/rustdesk /etc/rustdesk
+      cp /target/tmp/RustDesk2.toml /target/root/.config/rustdesk/RustDesk2.toml
+      cp /target/tmp/RustDesk2.toml /target/etc/rustdesk/RustDesk2.toml
+
+      curtin in-target -- mkdir -p /home/superuser/.config/rustdesk
+      cp /target/tmp/RustDesk2.toml /target/home/superuser/.config/rustdesk/RustDesk2.toml
+      curtin in-target -- chown -R superuser:superuser /home/superuser/.config
+
+      curtin in-target -- mkdir -p /etc/skel/.config/rustdesk
+      cp /target/tmp/RustDesk2.toml /target/etc/skel/.config/rustdesk/RustDesk2.toml
+
+      rm -f /tmp/rustdesk-release.json /tmp/rustdesk-url /target/tmp/rustdesk.deb /target/tmp/RustDesk2.toml
+
+    - rm -f /target/etc/apt/apt.conf.d/90curtin-aptproxy
+    - rm -f /target/etc/systemd/system/snapd.service.d/snap_proxy.conf
+    - rm -f /target/etc/environment.d/90proxy.conf
+
+    - bash -c 'cmdline=$(cat /proc/cmdline); case "$cmdline" in *";h="*) h=${cmdline##*;h=}; printf "%s\\n" "$h" > /target/etc/hostname;; esac'
+    - systemd-run --on-active=10s systemctl reboot --force
+  shutdown: reboot

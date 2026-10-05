@@ -1,0 +1,3 @@
+nfs.example.com:/ibm/gpfs_fs_01/IMAG /gpfs/imag nfs x-systemd.automount,x-systemd.idle-timeout=2m,nfsvers=4,user,exec 0 0
+nfs.example.com:/ibm/gpfs_fs_01/SCIC /gpfs/scic nfs x-systemd.automount,x-systemd.idle-timeout=2m,nfsvers=4,user,exec 0 0
+nfs.example.com:/ibm/gpfs_fs_01/SERVICES /gpfs/services nfs x-systemd.automount,x-systemd.idle-timeout=2m,nfsvers=4,user,exec 0 0

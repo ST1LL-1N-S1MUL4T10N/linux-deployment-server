@@ -1,0 +1,111 @@
+#!ipxe
+
+console --x 1024 --y 768 --picture http://172.16.110.10/ldsblacklogo.png
+
+set pxe-server http://172.16.110.10
+
+menu [EXAMPLE] Linux Deployment Server
+item --default desktop   Ubuntu Desktop 26.04.1
+item                  server    Ubuntu Server 26.04.1
+choose --default desktop --timeout 10000 target || exit
+goto ${target}
+
+:desktop
+echo
+echo "======================================================================"
+echo
+echo "                [EXAMPLE] UBUNTU DESKTOP 26.04.1"
+echo
+echo "======================================================================"
+echo
+set default-hostname ubuntu-desktop
+clear hostname
+echo -n "  Hostname [ubuntu-desktop]: ${}"
+read hostname
+isset ${hostname} || set hostname ${default-hostname}
+echo
+echo "  Hostname : ${hostname}"
+echo
+echo "  Target : ${net0/ip}"
+echo "  MAC    : ${net0/mac}"
+echo
+echo "  THIS INSTALLATION IS AUTOMATIC."
+echo "  The target disk will be automatically partitioned."
+echo "  Existing operating systems and data may be DESTROYED."
+echo
+
+sleep 3
+
+set base-url ${pxe-server}/ubuntu/desktop/26.04.1
+set iso-url ${base-url}/ubuntu-26.04.1-desktop-amd64.iso
+set autoinstall-url ${pxe-server}/autoinstall/desktop/26.04.1/
+
+echo "  Ubuntu Media    : ${iso-url}"
+echo "  Autoinstall     : ${autoinstall-url}"
+echo
+
+echo "  [1/3] Downloading Ubuntu kernel..."
+kernel ${base-url}/vmlinuz initrd=initrd ip=dhcp url=${iso-url} cloud-config-url=/dev/null autoinstall ds=nocloud-net;s=${autoinstall-url};h=${hostname}
+
+echo "  [2/3] Downloading Ubuntu initrd..."
+initrd ${base-url}/initrd
+
+echo
+echo "  [3/3] Verifying boot images..."
+imgstat
+echo
+
+sleep 3
+echo "  Launching Ubuntu Desktop 26.04.1 installer..."
+echo
+boot
+
+:server
+echo
+echo "======================================================================"
+echo
+echo "                 [EXAMPLE] UBUNTU SERVER 26.04.1"
+echo
+echo "======================================================================"
+echo
+set default-hostname ubuntu-server
+clear hostname
+echo -n "  Hostname [ubuntu-server]: ${}"
+read hostname
+isset ${hostname} || set hostname ${default-hostname}
+echo
+echo "  Hostname : ${hostname}"
+echo
+echo "  Target : ${net0/ip}"
+echo "  MAC    : ${net0/mac}"
+echo
+echo "  THIS INSTALLATION IS AUTOMATIC."
+echo "  The target disk will be automatically partitioned."
+echo "  Existing operating systems and data may be DESTROYED."
+echo
+
+sleep 3
+
+set base-url ${pxe-server}/ubuntu/server/26.04.1
+set iso-url ${base-url}/ubuntu-26.04.1-live-server-amd64.iso
+set autoinstall-url ${pxe-server}/autoinstall/server/26.04.1/
+
+echo "  Ubuntu Media    : ${iso-url}"
+echo "  Autoinstall     : ${autoinstall-url}"
+echo
+
+echo "  [1/3] Downloading Ubuntu kernel..."
+kernel ${base-url}/vmlinuz initrd=initrd ip=dhcp url=${iso-url} cloud-config-url=/dev/null autoinstall ds=nocloud-net;s=${autoinstall-url};h=${hostname}
+
+echo "  [2/3] Downloading Ubuntu initrd..."
+initrd ${base-url}/initrd
+
+echo
+echo "  [3/3] Verifying boot images..."
+imgstat
+echo
+
+sleep 3
+echo "  Launching Ubuntu Server 26.04.1 installer..."
+echo
+boot

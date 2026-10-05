@@ -1,0 +1,5 @@
+rendezvous_server = 'remote.example.local:21116'
+
+[options]
+custom-rendezvous-server = 'remote.example.local'
+key = 'CHANGE_ME_RUSTDESK_KEY='

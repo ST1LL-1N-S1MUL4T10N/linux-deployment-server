@@ -1,0 +1,12 @@
+services:
+  apt-cacher-ng:
+    image: mbentley/apt-cacher-ng:latest
+    container_name: apt-cacher-ng
+    restart: unless-stopped
+
+    ports:
+      - "172.16.110.10:3142:3142"
+
+    volumes:
+      - ./cache:/var/cache/apt-cacher-ng
+      - ./log:/var/log/apt-cacher-ng
