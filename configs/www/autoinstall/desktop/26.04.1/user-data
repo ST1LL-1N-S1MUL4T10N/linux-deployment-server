@@ -38,6 +38,12 @@ autoinstall:
     layout:
       name: direct
 
+  early-commands:
+    - mkdir -p /etc/systemd/system/snapd.service.d
+    - printf "[Service]\nEnvironment=\"HTTP_PROXY=http://172.16.110.10:3128/\" \"HTTPS_PROXY=http://172.16.110.10:3128/\"\n" > /etc/systemd/system/snapd.service.d/snap_proxy.conf
+    - systemctl daemon-reload
+    - systemctl restart snapd
+
   late-commands:
     - mkdir -p /target/etc/sssd
     - wget -Y off -qO /target/etc/sssd/sssd.conf http://172.16.110.10/autoinstall/sssd.conf
@@ -49,9 +55,9 @@ autoinstall:
     - chown root:root /target/etc/idmapd.conf
 
     - mkdir -p /target/usr/local/share/ca-certificates
-    - wget -Y off -qO /target/usr/local/share/ca-certificates/EXAMPLECA.crt http://172.16.110.10/autoinstall/ldap-ca.crt
-    - chmod 0644 /target/usr/local/share/ca-certificates/EXAMPLECA.crt
-    - chown root:root /target/usr/local/share/ca-certificates/EXAMPLECA.crt
+    - wget -Y off -qO /target/usr/local/share/ca-certificates/MPIBRCA.crt http://172.16.110.10/autoinstall/ldap-ca.crt
+    - chmod 0644 /target/usr/local/share/ca-certificates/MPIBRCA.crt
+    - chown root:root /target/usr/local/share/ca-certificates/MPIBRCA.crt
 
     - mkdir -p /target/gpfs/imag /target/gpfs/scic /target/gpfs/services
     - wget -Y off -qO /tmp/fstab.nfs http://172.16.110.10/autoinstall/fstab
@@ -99,7 +105,7 @@ autoinstall:
 
       curtin in-target -- mkdir -p /home/superuser/.config/rustdesk
       cp /target/tmp/RustDesk2.toml /target/home/superuser/.config/rustdesk/RustDesk2.toml
-      curtin in-target -- chown -R superuser:superuser /home/superuser/.config
+      chown -R superuser:superuser /home/superuser/.config
 
       curtin in-target -- mkdir -p /etc/skel/.config/rustdesk
       cp /target/tmp/RustDesk2.toml /target/etc/skel/.config/rustdesk/RustDesk2.toml
@@ -109,6 +115,22 @@ autoinstall:
     - rm -f /target/etc/apt/apt.conf.d/90curtin-aptproxy
     - rm -f /target/etc/systemd/system/snapd.service.d/snap_proxy.conf
     - rm -f /target/etc/environment.d/90proxy.conf
+    - curtin in-target -- chage -d 0 superuser
+
+    - |
+      set -eu
+      cmdline=$(cat /proc/cmdline)
+      case "$cmdline" in
+        *";dept="*)
+          department=${cmdline#*;dept=}
+          department=${department%%;*}
+          if [ "$department" != "base" ]; then
+            wget -Y off -qO /tmp/fstab-department "http://172.16.110.10/autoinstall/fstab-departments/fstab.${department}"
+            cat /tmp/fstab-department >> /target/etc/fstab
+            rm -f /tmp/fstab-department
+          fi
+          ;;
+      esac
 
     - bash -c 'cmdline=$(cat /proc/cmdline); case "$cmdline" in *";h="*) h=${cmdline##*;h=}; printf "%s\\n" "$h" > /target/etc/hostname;; esac'
     - systemd-run --on-active=10s systemctl reboot --force

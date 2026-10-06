@@ -1,0 +1,10 @@
+services:
+  squid-snap-cache:
+    image: ubuntu/squid:latest
+    container_name: squid-snap-cache
+    restart: always
+    ports:
+      - "3128:3128"
+    volumes:
+      - ./squid.conf:/etc/squid/squid.conf:ro
+      - ./cache:/var/spool/squid
