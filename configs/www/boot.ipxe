@@ -1,11 +1,12 @@
 #!ipxe
 
-console --x 1024 --y 768 --picture http://172.16.110.10/ldsblacklogo.png
+console --x 1024 --y 768 --picture http://pxe.lds.lan/ldsblacklogo.png
 
-set pxe-server http://172.16.110.10
+set pxe-server http://pxe.lds.lan
 
 menu [MPIBR] Linux Deployment Server
 item --default desktop    Ubuntu Desktop 26.04.1
+item desktop-dualboot   Ubuntu Desktop 26.04.1 - Dual boot (keep Windows)
 item                    server    Ubuntu Server 26.04.1
 choose --default desktop --timeout 10000 target || exit
 goto ${target}
@@ -122,5 +123,69 @@ echo
 
 sleep 3
 echo "  Launching Ubuntu Server 26.04.1 installer..."
+echo
+boot
+:desktop-dualboot
+isset ${disk-layout} || set disk-layout automatic
+echo
+echo "======================================================================"
+echo
+echo "                [MPIBR] UBUNTU DESKTOP 26.04.1 - DUAL BOOT"
+echo
+echo "======================================================================"
+echo
+set default-hostname ubuntu-desktop
+clear hostname
+echo -n "  Hostname [ubuntu-desktop]: ${}"
+read hostname
+isset ${hostname} || set hostname ${default-hostname}
+echo
+echo "  Hostname : ${hostname}"
+echo
+menu Desktop Filesystem Profile
+item --default base    DEFAULT
+item                   bark    BARK
+item                   bran    BRAN
+item                   hest    HEST
+item                   laur    LAUR
+item                   prot    PROT
+item                   schu    SCHU
+item                   shuk    SHUK
+item                   stem    STEM
+choose --default base --timeout 10000 department || exit
+echo
+echo "  Filesystem : ${department}"
+echo
+echo "  Target : ${net0/ip}"
+echo "  MAC    : ${net0/mac}"
+echo
+echo "  THIS INSTALLATION IS AUTOMATIC."
+echo "  Storage step is INTERACTIVE: keep Windows, use free space."
+echo "  Do NOT erase the whole disk."
+echo
+
+sleep 3
+
+set base-url ${pxe-server}/ubuntu/desktop/26.04.1
+set iso-url ${base-url}/ubuntu-26.04.1-desktop-amd64.iso
+set autoinstall-url ${pxe-server}/autoinstall/desktop/26.04.1-dualboot/
+
+echo "  Ubuntu Media    : ${iso-url}"
+echo "  Autoinstall     : ${autoinstall-url}"
+echo
+
+echo "  [1/3] Downloading Ubuntu kernel..."
+kernel ${base-url}/vmlinuz initrd=initrd ip=dhcp url=${iso-url} cloud-config-url=/dev/null autoinstall ds=nocloud-net;s=${autoinstall-url};dept=${department};h=${hostname}
+
+echo "  [2/3] Downloading Ubuntu initrd..."
+initrd ${base-url}/initrd
+
+echo
+echo "  [3/3] Verifying boot images..."
+imgstat
+echo
+
+sleep 3
+echo "  Launching Ubuntu Desktop 26.04.1 installer..."
 echo
 boot
