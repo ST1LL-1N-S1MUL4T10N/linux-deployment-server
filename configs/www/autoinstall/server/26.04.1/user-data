@@ -7,20 +7,35 @@ autoinstall:
 
   proxy: http://172.16.110.10:3142
 
+  early-commands:
+    - mkdir -p /usr/local/share/ca-certificates
+    - wget -Y off -qO /usr/local/share/ca-certificates/squid-ca.crt http://172.16.110.10/autoinstall/proxy/squid/certificates/squid-ca.crt
+    - update-ca-certificates
+    - mkdir -p /etc/systemd/system/snapd.service.d
+    - printf "[Service]\nEnvironment=\"HTTP_PROXY=http://172.16.110.10:3128/\" \"HTTPS_PROXY=http://172.16.110.10:3128/\"\n" > /etc/systemd/system/snapd.service.d/snap_proxy.conf
+    - systemctl daemon-reload
+    - systemctl restart snapd
+
   identity:
     realname: Superuser
     hostname: ubuntu-server
     username: superuser
-    password: "CHANGE_ME_HASH"
+    password: "CHANGE_HASH"
 
   storage:
     layout:
       name: direct
 
   late-commands:
+    - mkdir -p /target/etc/systemd/system/snapd.service.d
+    - printf "[Service]\nEnvironment=\"HTTP_PROXY=http://172.16.110.10:3128/\" \"HTTPS_PROXY=http://172.16.110.10:3128/\"\n" > /target/etc/systemd/system/snapd.service.d/snap_proxy.conf
     - rm -f /target/etc/apt/apt.conf.d/90curtin-aptproxy
     - rm -f /target/etc/systemd/system/snapd.service.d/snap_proxy.conf
+    - rm -f /etc/systemd/system/snapd.service.d/snap_proxy.conf
     - rm -f /target/etc/environment.d/90proxy.conf
+    - rm -f /target/usr/local/share/ca-certificates/squid-ca.crt
+    - curtin in-target -- update-ca-certificates --fresh
 
     - bash -c 'cmdline=$(cat /proc/cmdline); case "$cmdline" in *";h="*) h=${cmdline##*;h=}; printf "%s\\n" "$h" > /target/etc/hostname;; esac'
+    - curtin in-target -- chage -d 0 superuser
   shutdown: reboot
